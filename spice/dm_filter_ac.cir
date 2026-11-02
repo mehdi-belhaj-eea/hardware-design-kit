@@ -1,0 +1,38 @@
+* Differential-mode noise path of the 48 V buck (Example 2, docs/example_industrial_48v.md)
+* 1 A AC noise current from the converter; LISN = 2 x 50 ohm in series (100 ohm DM).
+* v(c) = 100 ohm x LISN current, so vdb(c) - 40 = 20 log10(i_LISN / i_noise).
+* Circuit 1, with filter:  LISN - C_f - L_f - C_in // (R_d + C_d)
+*   C_in 10u (3 mohm, 1.5 nH), R_d 0.68794 ohm + C_d 47u,
+*   L_f 15u (5 mohm DCR, 20 pF), C_f 7 x 4.7u = 32.9u (1 mohm, 0.5 nH)
+* Circuit 2, without filter: C_in alone in front of the LISN.
+* Python model at 250 kHz: vdb(c) = -86.36 dB with filter, -24.24 dB without, insertion loss 62.12 dB
+* Run: ngspice -b dm_filter_ac.cir
+I1 0 a AC 1
+Cin a cin1 10u
+Rin cin1 cin2 3m
+Lin cin2 0 1.5n
+Rd a d1 0.68794
+Cd d1 0 47u
+L1 a l1 15u
+Rl l1 b 5m
+Cp a b 20p
+Cf b cf1 32.9u
+Rf cf1 cf2 1m
+Lf cf2 0 0.5n
+Vs b c 0
+Rlisn c 0 100
+I2 0 a2 AC 1
+Cin2 a2 cin3 10u
+Rin2 cin3 cin4 3m
+Lin2 cin4 0 1.5n
+Vs2 a2 c2 0
+Rlisn2 c2 0 100
+.ac dec 50 1k 30meg
+.control
+run
+meas ac with_filter_250k FIND vdb(c) AT=250k
+meas ac without_filter_250k FIND vdb(c2) AT=250k
+let insertion_loss_250k = without_filter_250k - with_filter_250k
+print insertion_loss_250k
+.endc
+.end

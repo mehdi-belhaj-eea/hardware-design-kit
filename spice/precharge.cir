@@ -1,0 +1,13 @@
+* Precharge of a 220 uF bus at 32 V through 2.1333 ohm (Example 1, docs/example_aero_28v.md)
+* Python model: I_peak = 15 A, tau = 0.4693 ms, 90 % of 32 V after 1.0807 ms,
+* energy in the resistor until then = 111.5 mJ
+* Run: ngspice -b precharge.cir
+V1 in 0 PWL(0 0 1n 32)
+Vm in x 0
+R1 x a 2.13333
+C1 a 0 220u
+.tran 0.2u 3m 0 0.2u
+.meas tran i_peak MAX i(vm)
+.meas tran t_90pct WHEN v(a)=28.8 RISE=1
+.meas tran e_resistor INTEG par('(v(in)-v(a))*i(vm)') FROM=0 TO=1.08068m
+.end

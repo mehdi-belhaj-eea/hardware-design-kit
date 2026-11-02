@@ -1,0 +1,25 @@
+* Filter output impedance seen by the converter on a stiff bus (Example 2, Middlebrook check)
+* A 1 A AC current injected at the converter terminals: |v| = |Z_o| in ohms.
+* L_f 15u with 5 mohm DCR resonates with the converter's C_in 10u near 13 kHz.
+*   Circuit 1, undamped: Python model peak 300 ohm
+*   Circuit 2, R_d 0.68794 ohm + C_d 47u across C_in: Python model peak 0.94 ohm
+* Converter input impedance at 36 V, 240 W, eta 0.92: |Z_in| = 4.97 ohm (limit 2.48 ohm with 6 dB)
+* Run: ngspice -b zout_damping_ac.cir
+I1 0 a AC 1
+C1 a 0 10u
+L1 a l1 15u
+R1 l1 0 5m
+I2 0 b AC 1
+C2 b 0 10u
+L2 b l2 15u
+R2 l2 0 5m
+Rd b d 0.68794
+Cd d 0 47u
+* fine sweep: the undamped resonance is only about 50 Hz wide (Q = 245)
+.ac dec 20000 1k 100k
+.control
+run
+meas ac zo_peak_undamped MAX vm(a)
+meas ac zo_peak_damped MAX vm(b)
+.endc
+.end

@@ -1,0 +1,21 @@
+* 1500 W TVS (V_BR 40 V, V_C 58.1 V at 25.8 A) under level-3 pin injection (Example 1)
+* Source: double exponential fitted by hdk.protection.surge.double_exponential
+*   WF4  300 V / 60 A  (5 ohm), 6.4/69 us   -> Python model: 45.6 A, 72.0 V
+*   WF5A 300 V / 300 A (1 ohm), 40/120 us   -> Python model: 152.8 A, 147.2 V
+* Linearised TVS: breakdown BV, then R_d = (V_C - V_BR) / I_PP = 0.70155 ohm
+* Run: ngspice -b tvs_clamp.cir
+B4 s4 0 V = 328.43247*(exp(-11357.912*time)-exp(-641703.49*time))
+Rs4 s4 n4 5
+Vm4 n4 t4 0
+D4 0 t4 dtvs
+B5 s5 0 V = 700.06171*(exp(-12632.642*time)-exp(-43604.613*time))
+Rs5 s5 n5 1
+Vm5 n5 t5 0
+D5 0 t5 dtvs
+.model dtvs D(BV=40 IBV=1m RS=0.70155)
+.tran 20n 300u 0 20n
+.meas tran wf4_i_peak MAX i(vm4)
+.meas tran wf4_v_peak MAX v(t4)
+.meas tran wf5a_i_peak MAX i(vm5)
+.meas tran wf5a_v_peak MAX v(t5)
+.end
