@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hardware-design-kit"
-version = "0.1.0"
-description = "Design calculators for power-input protection and EMI filters, cross-checked against ngspice."
+version = "0.2.0"
+description = "Design calculators for power-input protection, EMI filters, flyback converters, measurement chains and PCB rules, cross-checked against ngspice."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Mehdi Belhaj" }]
-keywords = ["power electronics", "EMI filter", "TVS", "inrush", "hold-up", "DO-160", "EMC"]
+keywords = ["power electronics", "EMI filter", "TVS", "inrush", "hold-up", "DO-160", "EMC", "flyback", "transformer", "iGSE", "IPC-2221", "IEC 60664-1"]
 dependencies = ["numpy>=1.24", "scipy>=1.10", "matplotlib>=3.7"]
 
 [project.optional-dependencies]

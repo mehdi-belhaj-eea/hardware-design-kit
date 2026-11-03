@@ -25,3 +25,6 @@ jobs:
         run: |
           python examples/aero_28v_protection.py
           python examples/industrial_48v_emi.py
+          python examples/aux_flyback_28v.py
+          python examples/measurement_chains.py
+          python examples/pcb_rules.py

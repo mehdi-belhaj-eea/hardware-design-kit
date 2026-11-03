@@ -2,10 +2,11 @@
 
 [![tests](https://github.com/mehdi-belhaj-eea/hardware-design-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/mehdi-belhaj-eea/hardware-design-kit/actions/workflows/ci.yml)
 
-Design calculators for the power input of an electronic board: inrush precharge, reverse
-polarity, lightning and surge (TVS), ESD, hold-up, and the differential- and common-mode EMI
-filter with its damping and stability check. Written in Python; every model is checked
-against closed-form results and ngspice simulations in the test suite.
+Design calculators for the power side of an electronic board: input protections (inrush
+precharge, reverse polarity, lightning and surge, ESD, hold-up), the EMI filter with its damping
+and stability check, a flyback converter and its transformer, voltage and current measurement
+chains, and PCB rules (trace width, clearance and creepage with altitude). Written in Python;
+every model is checked against closed-form results and ngspice simulations in the test suite.
 
 > Personal self-training project (2026). All values in the examples are illustrative: no data
 > from any employer, customer or program is used.
@@ -22,6 +23,10 @@ against closed-form results and ngspice simulations in the test suite.
 | `hdk.emi.spectrum` | Harmonics of trapezoidal switching waveforms and their envelope |
 | `hdk.emi.limits` | Conducted-emission limit lines (CISPR 32 class B as a reference), margins |
 | `hdk.emi.filters` | DM π filter with parasitics, optimum damping, Middlebrook stability, CM choke and Y capacitors |
+| `hdk.power.flyback` | Flyback in CCM and DCM: turns ratio, magnetising inductance, peak and RMS currents, voltage stresses, RCD clamp, output capacitor, right-half-plane zero, ngspice netlist |
+| `hdk.magnetics` | Flyback transformer: turns, gap with fringing, iGSE core loss, wire choice, Dowell AC resistance per harmonic, copper fill, temperature rise |
+| `hdk.measure` | Divider and shunt chains, ADC kick-back and settling, error budgets before and after calibration |
+| `hdk.pcb` | IPC-2221 trace width and vias; IEC 60664-1 clearance and creepage, altitude correction, reinforced insulation |
 
 The equations and assumptions are in [docs/methods.md](docs/methods.md).
 
@@ -51,16 +56,54 @@ The equations and assumptions are in [docs/methods.md](docs/methods.md).
 
 <img src="docs/img/emi48_stability.png" width="49%"> <img src="docs/img/emi48_dm_spectrum.png" width="49%">
 
+### 3. Isolated 15 V auxiliary flyback from a 28 V bus — [full report](docs/example_flyback_28v.md)
+
+| Step | Result |
+| --- | --- |
+| Turns and inductance (18–32 V in, 15 V / 1 A out, 200 kHz) | 11 : 11 on an EFD20-class core, L_m = 29.5 µH, total gap 0.16 mm (fringing included) |
+| Currents at 18 V, full load | CCM, D = 0.463, primary peak 2.83 A, RMS 1.47 A |
+| Stresses | drain 63 V with an RCD clamp dissipating 0.71 W, rectifier 47 V |
+| Transformer | 0.244 T peak, core 0.11 W (iGSE), copper 0.47 W including 0.21 W of eddy loss in the idle primary, about 38 K rise |
+| Switching simulation at 18 V (ngspice) | primary peak 2.543 A simulated, 2.559 A from the model |
+
+<img src="docs/img/flyback_waveforms.png" width="70%">
+
+### 4. Voltage and current measurement chains — [full report](docs/example_measurement.md)
+
+| Chain | Worst case / RSS, as built | After calibration |
+| --- | --- | --- |
+| DC link 0–500 V: 4 × 249 kΩ + 6.19 kΩ into a 12-bit ADC | ±0.84 % / ±0.37 % | ±0.39 % / ±0.27 % |
+| Phase current ±20 A: 1 mΩ shunt, gain 50 | ±2.87 % / ±1.21 % | ±0.65 % / ±0.31 % |
+
+Without a buffer, the divider needs at least 123 nF at the ADC input to absorb the sampling
+kick-back (bandwidth about 170 Hz), and its 6.15 kΩ source limits the sample rate to about 1.3 kHz
+per channel: fine for monitoring, not for a fast control loop or a protection.
+
+<img src="docs/img/measurement_budget.png" width="85%">
+
+### 5. PCB rules — [full report](docs/example_pcb_rules.md)
+
+| Check | Result |
+| --- | --- |
+| 5 A, 1 oz copper, 10 °C rise (IPC-2221) | 2.77 mm external, 7.19 mm internal; 6 vias of Ø0.3 mm |
+| 400 V DC link behind a single-phase 230 V PFC, OVC II, pollution degree 2 | basic 1.5 mm clearance / 2.0 mm creepage; reinforced 3.0 / 4.0 mm |
+| Same board at 5000 m | reinforced clearance 4.44 mm, which now sets the creepage too |
+
+<img src="docs/img/pcb_clearance_altitude.png" width="70%">
+
 ## Validation
 
-- **Tests** (`pytest`): closed-form checks of every calculator, and cross-checks against
-  **ngspice**: precharge transient, TVS clamp, DM noise path from 1 kHz to 30 MHz with all
-  parasitics (difference below 0.05 dB), filter output impedance.
+- **Tests** (`pytest`, 76 tests): closed-form checks of every calculator, and cross-checks
+  against **ngspice**: precharge transient, TVS clamp, DM noise path from 1 kHz to 30 MHz with
+  all parasitics (difference below 0.05 dB), filter output impedance, and a switching simulation
+  of the flyback at both ends of the input range (peak current, current slope, clamp voltage).
 - **Optimum damping**: the closed-form R_d is compared with a numerical minimisation of the
   output-impedance peak.
+- **Core loss**: the iGSE is checked against the Steinmetz equation for a sine and against
+  numerical integration for a triangle.
 - **Standalone netlists** in [spice/](spice/) reproduce the examples and print their results
   with `.meas`.
-- **CI**: GitHub Actions runs the tests and both examples on Python 3.10 and 3.12, with ngspice.
+- **CI**: GitHub Actions runs the tests and all the examples on Python 3.10 and 3.12, with ngspice.
 
 ## Quick start
 
@@ -71,6 +114,9 @@ pip install -e ".[dev]"
 pytest                                  # ngspice tests are skipped if ngspice is not installed
 python examples/aero_28v_protection.py
 python examples/industrial_48v_emi.py
+python examples/aux_flyback_28v.py
+python examples/measurement_chains.py
+python examples/pcb_rules.py
 ```
 
 ```python
@@ -89,15 +135,20 @@ print(f"TVS current {r.i_peak:.0f} A, clamped at {r.v_peak:.0f} V")
 
 - Ideal trapezoidal waveforms: ringing, diode recovery and layout resonances are not modelled.
 - Linearised TVS and a t^(−1/2) pulse-power estimate: confirm with the datasheet curves.
+- Flyback: losses lumped into an efficiency, leakage inductance as an input, open-loop simulation.
+  Core-loss exponents and bobbin data in the examples are assumptions: take them from the data sheets.
+- IEC 60664-1 values are transcribed for the cases implemented (clearance case A, printed wiring
+  creepage, pollution degrees 1 and 2): check them against the edition you apply, and against the
+  product standard.
 - CISPR 32 is used as a well-known public reference. Use the limit that applies to the product
   (DO-160 Section 21, MIL-STD-461 CE102, CISPR 25, ...).
 - These calculators help size and review a design; they do not replace qualification tests.
 
 ## Roadmap
 
-- [x] Input protections and EMI filter (this release)
-- [ ] Flyback converter and transformer design; voltage and current measurement chains
-- [ ] PCB rules: trace width and temperature rise (IPC-2221), creepage and clearance (IEC 60664-1, altitude correction)
+- [x] Input protections and EMI filter (0.1)
+- [x] Flyback converter and transformer design; voltage and current measurement chains (0.2)
+- [x] PCB rules: trace width and temperature rise (IPC-2221), creepage and clearance (IEC 60664-1, altitude correction) (0.2)
 - [ ] KiCad 4-layer board applying these rules
 
 ## About
@@ -114,10 +165,11 @@ Licence: MIT.
 
 ### En bref (français)
 
-Calculateurs pour l'étage d'entrée d'une carte électronique : précharge (limitation du courant
-d'appel), protection contre l'inversion de polarité, foudre et surtensions (TVS), ESD,
-maintien (hold-up), et filtre CEM de mode différentiel et de mode commun avec amortissement et
-critère de stabilité de Middlebrook. Chaque modèle est vérifié par des tests, dont des
-comparaisons avec ngspice. Deux exemples : une entrée 28 V de type aéronautique (DO-160G
-section 22, niveau 3) et un convertisseur abaisseur 48 V (CISPR 32 classe B). Projet personnel
-d'autoformation ; toutes les valeurs sont illustratives.
+Calculateurs pour la partie puissance d'une carte électronique : protections d'entrée
+(précharge, inversion de polarité, foudre et surtensions, ESD, maintien), filtre CEM de mode
+différentiel et de mode commun avec amortissement et critère de stabilité de Middlebrook,
+convertisseur flyback et son transformateur (entrefer, pertes fer par iGSE, pertes cuivre par
+Dowell), chaînes de mesure de tension et de courant avec budget d'erreur, et règles PCB (largeur
+de piste IPC-2221, distances d'isolement IEC 60664-1 avec correction d'altitude). Chaque modèle
+est vérifié par des tests, dont des comparaisons avec ngspice. Cinq exemples complets. Projet
+personnel d'autoformation ; toutes les valeurs sont illustratives.
