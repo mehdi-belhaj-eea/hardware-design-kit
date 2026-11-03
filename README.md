@@ -149,7 +149,6 @@ print(f"TVS current {r.i_peak:.0f} A, clamped at {r.v_peak:.0f} V")
 - [x] Input protections and EMI filter (0.1)
 - [x] Flyback converter and transformer design; voltage and current measurement chains (0.2)
 - [x] PCB rules: trace width and temperature rise (IPC-2221), creepage and clearance (IEC 60664-1, altitude correction) (0.2)
-- [ ] KiCad 4-layer board applying these rules
 
 ## About
 
